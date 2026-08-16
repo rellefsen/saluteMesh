@@ -15,6 +15,7 @@ import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Surface
 import androidx.compose.material.Tab
 import androidx.compose.material.TabRow
 import androidx.compose.material.Text
@@ -62,6 +63,7 @@ fun CommandCenterApp() {
     var status by remember { mutableStateOf("Command center. Connect a radio on the Radio tab.") }
     var reports by remember { mutableStateOf(history.load()) }
     var busy by remember { mutableStateOf(false) }
+    var incomingBanner by remember { mutableStateOf("") }
     var connected by remember { mutableStateOf(false) }
     var radioLabel by remember { mutableStateOf("Not connected") }
     var serialPorts by remember { mutableStateOf(listOf<String>()) }
@@ -92,7 +94,7 @@ fun CommandCenterApp() {
         reports = history.append(decoded)
         if (!known) {
             status = "Received ${decoded.kind.name} from ${decoded.callsign}"
-            tab = 1
+            incomingBanner = "New ${decoded.kind.name} from ${decoded.callsign}"
         }
     }
 
@@ -214,6 +216,19 @@ fun CommandCenterApp() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        if (incomingBanner.isNotBlank()) {
+            Surface(color = MaterialTheme.colors.secondary, modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(incomingBanner, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { tab = 1 }) { Text("History") }
+                    TextButton(onClick = { incomingBanner = "" }) { Text("Dismiss") }
+                }
+            }
+        }
         TabRow(selectedTabIndex = tab) {
             Tab(selected = tab == 0, onClick = { tab = 0 }) {
                 Text("Compose", modifier = Modifier.padding(12.dp))
@@ -268,7 +283,6 @@ fun CommandCenterApp() {
                     status = "History cleared."
                 },
                 onFill = { report ->
-                    callsign = report.callsign
                     size = report.size
                     activity = report.activity
                     location = report.location
@@ -277,7 +291,7 @@ fun CommandCenterApp() {
                     equipment = report.equipment
                     kind = report.kind
                     tab = 0
-                    status = "Loaded ${report.kind.name} from ${report.callsign}."
+                    status = "Loaded ${report.kind.name} fields from ${report.callsign}. Callsign unchanged."
                 },
             )
             else -> RadioPane(
