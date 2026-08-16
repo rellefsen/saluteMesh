@@ -23,7 +23,9 @@ class MeshtasticBleTransport(
     private var client: RadioClient? = null
     private var cachedChannels: List<RadioChannel> = emptyList()
     private var incoming: ((String) -> Unit)? = null
+    private var channelListHandler: ((List<RadioChannel>) -> Unit)? = null
     private var listenJob: Job? = null
+    private var channelJob: Job? = null
 
     override suspend fun connect() {
         disconnect()
@@ -54,12 +56,15 @@ class MeshtasticBleTransport(
         client = radio
         cachedChannels = mapChannels(radio.channels.value)
         startPacketListen(radio)
+        startChannelListen(radio)
         Log.i(TAG, "BLE connected to $address channels=${cachedChannels.map { it.label }}")
     }
 
     override suspend fun disconnect() {
         listenJob?.cancel()
         listenJob = null
+        channelJob?.cancel()
+        channelJob = null
         try {
             client?.disconnect()
         } catch (_: Exception) {
@@ -85,6 +90,24 @@ class MeshtasticBleTransport(
 
     override fun setIncomingHandler(handler: ((String) -> Unit)?) {
         incoming = handler
+    }
+
+    override fun setChannelListHandler(handler: ((List<RadioChannel>) -> Unit)?) {
+        channelListHandler = handler
+        if (cachedChannels.isNotEmpty()) handler?.invoke(cachedChannels)
+    }
+
+    private fun startChannelListen(radio: RadioClient) {
+        channelJob?.cancel()
+        channelJob = CoroutineScope(Dispatchers.Default).launch {
+            try {
+                radio.channels.collect { raw ->
+                    cachedChannels = mapChannels(raw)
+                    channelListHandler?.invoke(cachedChannels)
+                }
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun startPacketListen(radio: RadioClient) {

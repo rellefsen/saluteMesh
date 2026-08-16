@@ -2,16 +2,14 @@
 
 SALUTE Mesh is a phone app for sending and receiving **SALUTE** and shorter **SALT** reports over a Meshtastic radio network. Phones talk to a radio already on your belt or dashboard. The radios carry the message. Other people running this app on the same radio channel see the report.
 
-It is **not** Block Status (the neighborhood color board). The two apps can share a mesh without mixing up each other’s messages.
-
 There is no iPhone version yet. You install the Android app yourself (sideload). It is not on the Play Store.
 
 ## Download the phone app
 
 Sideload the field APK from **[GitHub Releases](https://github.com/rellefsen/saluteMesh/releases)**. Allow unknown sources. This is a debug build for field trials, not a Play Store app.
 
-- **Field radio:** `SaluteMesh-mesh-debug-0.1.0.apk` — Bluetooth to a Meshtastic radio. Includes the Meshtastic SDK (**GPL-3.0**).
-- **Practice (no radio):** `SaluteMesh-mock-debug-0.1.0.apk` — form and history only.
+- **Field radio:** `SaluteMesh-mesh-debug-0.1.1.apk` — Bluetooth to a Meshtastic radio. Includes the Meshtastic SDK (**GPL-3.0**).
+- **Practice (no radio):** `SaluteMesh-mock-debug-0.1.1.apk` — form and history only.
 
 Install over a previous 0.1.x build from this project (same debug signing key). The two APKs can sit on one phone (practice has a different app id).
 
@@ -97,7 +95,7 @@ History stays on **that phone** after you close the app. It is not a shared clou
 
 1. Scan for radios and tap yours.
 2. Connect.
-3. Pick the channel named **salute** if it is not already selected.
+3. Tap the **mesh channel** this net uses (often named **salute**). You can change it any time without reconnecting.
 
 The radios must already share that channel and key. If people cannot hear each other, the radios are not on the same channel — not a problem the app can fix.
 
@@ -121,9 +119,8 @@ This is the full app on a laptop: Compose, History, and **Radio**.
 2. Open the command-center window (see the start commands below).
 3. Open the **Radio** tab.
 4. Choose **USB serial** or **Bluetooth**.
-5. Find/scan, tap the radio, keep channel name **salute** unless your radios use another name.
-6. Tap **Connect**.
-7. Go back to **Compose** and send. Incoming reports show up in **History**.
+5. Find/scan, tap the radio. After **Connect**, tap the **mesh channel** this net uses (often **salute**).
+6. Go back to **Compose** and send. Incoming reports show up in **History**.
 
 History is saved on **that laptop** (`~/.saluteMesh/` on Linux, similar under your user folder on Windows). It is not a cloud inbox.
 
@@ -140,7 +137,7 @@ cd ~/saluteMesh
 ./scripts/run-command-center.sh
 ```
 
-The first run installs a small Python helper (same Meshtastic library Block Status uses). You need JDK 21 and Python 3. Linux USB: your user should be in the `dialout` group.
+The first run installs a small Python helper for talking to the radio. You need JDK 21 and Python 3. Linux USB: your user should be in the `dialout` group.
 
 **Windows**
 
@@ -160,7 +157,6 @@ You can still open the window and use **Fake incoming**. Without Connect, **Send
 ## What this version does not do
 
 - It does not set radio channel names or secret keys. Do that on the radios.
-- It does not replace Block Status (house colors, precincts, heartbeat).
 - It does not run on iPhone.
 - It does not store history in the cloud. Each phone and each laptop keeps its own History. The command-center laptop hears the mesh only while it is connected to a radio.
 
@@ -184,4 +180,4 @@ Install files:
 
 Linux preview / command center: `./scripts/run-command-center.sh` or `./gradlew :desktop:run` after `python/setup-venv.sh`.
 
-Radio helper: `python/radio_bridge.py` (Meshtastic Python serial + BLE, same approach as charcTool).
+Radio helper: `python/radio_bridge.py` (Meshtastic Python serial + Bluetooth).

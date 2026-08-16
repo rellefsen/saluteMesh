@@ -41,4 +41,5 @@ interface MeshTransport {
     fun isConnected(): Boolean
     fun channels(): List<RadioChannel> = emptyList()
     fun setIncomingHandler(handler: ((String) -> Unit)?)
+    fun setChannelListHandler(handler: ((List<RadioChannel>) -> Unit)?) {}
 }

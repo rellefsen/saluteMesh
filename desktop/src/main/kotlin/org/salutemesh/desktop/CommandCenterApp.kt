@@ -258,6 +258,21 @@ fun CommandCenterApp() {
                 },
                 onFake = ::fakeIncoming,
                 onNow = { timeText = SaluteTime.nowLocal() },
+                channels = channels,
+                channelIndex = channelIndex,
+                onPickChannel = { channel ->
+                    channelIndex = channel.index
+                    settings = settings.copy(channelName = channel.name.ifBlank { settings.channelName })
+                    DesktopSettings.save(settings.copy(callsign = callsign))
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) { bridge.setChannel(channel.index, channel.name) }
+                            status = "Mesh channel: ${channel.label} (index ${channel.index})"
+                        } catch (exc: Exception) {
+                            status = "Could not select channel: ${exc.message}"
+                        }
+                    }
+                },
             )
             1 -> HistoryPane(
                 status = status,
@@ -294,6 +309,19 @@ fun CommandCenterApp() {
                 onPort = { value -> settings = settings.copy(serialPort = value) },
                 onBle = { value -> settings = settings.copy(bleAddress = value) },
                 onChannel = { value -> settings = settings.copy(channelName = value) },
+                onPickChannel = { channel ->
+                    channelIndex = channel.index
+                    settings = settings.copy(channelName = channel.name.ifBlank { settings.channelName })
+                    DesktopSettings.save(settings.copy(callsign = callsign))
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) { bridge.setChannel(channel.index, channel.name) }
+                            status = "Mesh channel: ${channel.label} (index ${channel.index})"
+                        } catch (exc: Exception) {
+                            status = "Could not select channel: ${exc.message}"
+                        }
+                    }
+                },
                 onRefreshSerial = {
                     scope.launch {
                         busy = true
@@ -368,6 +396,9 @@ private fun ComposePane(
     onClear: () -> Unit,
     onFake: () -> Unit,
     onNow: () -> Unit,
+    channels: List<MeshChannel>,
+    channelIndex: Int,
+    onPickChannel: (MeshChannel) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
@@ -382,6 +413,18 @@ private fun ComposePane(
             Button(onClick = onSend, enabled = !busy) { Text("Send ${kind.name}") }
             OutlinedButton(onClick = onClear, enabled = !busy) { Text("Clear data") }
             OutlinedButton(onClick = onFake, enabled = !busy) { Text("Fake incoming") }
+        }
+        if (channels.isNotEmpty()) {
+            Text("Mesh channel — tap the one this net uses.")
+            channels.forEach { channel ->
+                if (channel.index == channelIndex) {
+                    Button(onClick = { onPickChannel(channel) }) { Text("${channel.index}  ${channel.label}") }
+                } else {
+                    OutlinedButton(onClick = { onPickChannel(channel) }) { Text("${channel.index}  ${channel.label}") }
+                }
+            }
+        } else {
+            Text("Connect a radio on the Radio tab, then tap a mesh channel here.")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (kind == ReportKind.SALUTE) {
@@ -498,6 +541,7 @@ private fun RadioPane(
     onPort: (String) -> Unit,
     onBle: (String) -> Unit,
     onChannel: (String) -> Unit,
+    onPickChannel: (MeshChannel) -> Unit,
     onRefreshSerial: () -> Unit,
     onScanBle: () -> Unit,
     onConnect: () -> Unit,
@@ -523,13 +567,25 @@ private fun RadioPane(
         OutlinedTextField(
             settings.channelName,
             onChannel,
-            label = { Text("Channel name (must already exist on the radio)") },
+            label = { Text("Preferred channel name (used at connect if it exists)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
-        if (channels.isNotEmpty()) {
-            Text("Channels on this radio: " + channels.joinToString { "${it.index}:${it.label}" })
-            if (channelIndex >= 0) Text("Using index $channelIndex")
+        Text("Mesh channel — tap after Connect. This does not create channels or set the secret key.")
+        if (channels.isEmpty()) {
+            Text(if (connected) "No channels listed. Reconnect." else "Channels appear after you connect.")
+        } else {
+            channels.forEach { channel ->
+                if (channel.index == channelIndex) {
+                    Button(onClick = { onPickChannel(channel) }, enabled = !busy) {
+                        Text("${channel.index}  ${channel.label}")
+                    }
+                } else {
+                    OutlinedButton(onClick = { onPickChannel(channel) }, enabled = !busy) {
+                        Text("${channel.index}  ${channel.label}")
+                    }
+                }
+            }
         }
         if (settings.connectionType == "serial") {
             OutlinedTextField(

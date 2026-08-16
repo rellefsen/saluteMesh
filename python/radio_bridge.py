@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """JSON-lines Meshtastic radio bridge for the SALUTE Mesh command-center UI.
 
-Same serial + Bluetooth path as Block Status (charcTool): official Meshtastic
-Python library. The app never sets channel PSK. One JSON object per line on stdin;
+Uses the official Meshtastic Python library over USB serial or Bluetooth.
+The app never sets channel PSK. One JSON object per line on stdin;
 one JSON object per line on stdout.
 """
 
@@ -169,16 +169,29 @@ def _channel_role_disabled(channel: object) -> bool:
 def list_channels(iface: object) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     candidates: list[object] = []
-    for owner in (iface, getattr(iface, "localNode", None)):
-        if owner is None:
-            continue
+    owners: list[object] = [iface]
+    local = getattr(iface, "localNode", None)
+    if local is not None:
+        owners.append(local)
+    for owner in owners:
         try:
             node = owner.getNode("^local") if hasattr(owner, "getNode") else owner
         except Exception:
             node = owner
         channels = getattr(node, "channels", None)
-        if channels:
+        if channels is None:
+            continue
+        try:
             candidates.extend(list(channels))
+        except Exception:
+            try:
+                candidates.extend(channels[i] for i in range(len(channels)))
+            except Exception:
+                for i in range(8):
+                    try:
+                        candidates.append(channels[i])
+                    except Exception:
+                        break
     seen: set[int] = set()
     for channel in candidates:
         try:
@@ -187,6 +200,8 @@ def list_channels(iface: object) -> list[dict[str, Any]]:
             index = int(getattr(channel, "index", 0))
             settings = getattr(channel, "settings", None)
             name = str(getattr(settings, "name", "") or "") if settings is not None else ""
+            if not name and index == 0:
+                name = "Primary"
             if index in seen:
                 continue
             seen.add(index)
@@ -253,16 +268,50 @@ def connect(kind: str, port: str, address: str, channel_name: str) -> dict[str, 
         _interface = iface
         _channel_index = index
         _connected_label = label
+    if index is None and channels:
+        index = int(channels[0]["index"])
+        with _active_lock:
+            _channel_index = index
+        _channel_name = str(channels[0].get("name") or _channel_name)
     if index is None:
-        raise RuntimeError(
-            f"Radio opened on {label}, but channel '{_channel_name}' was not found. "
-            "Set the channel name on the radios first."
-        )
+        index = 0
+        with _active_lock:
+            _channel_index = index
     return {
         "connected": True,
         "port": label,
         "channelName": _channel_name,
         "channelIndex": index,
+        "channels": channels,
+    }
+
+
+def set_channel(index: int | None, name: str) -> dict[str, Any]:
+    global _channel_index, _channel_name
+    with _active_lock:
+        iface = _interface
+    if iface is None:
+        raise RuntimeError("Radio is not connected.")
+    channels = list_channels(iface)
+    chosen: dict[str, Any] | None = None
+    if index is not None:
+        chosen = next((row for row in channels if int(row["index"]) == int(index)), None)
+        if chosen is None:
+            chosen = {"index": int(index), "name": name.strip()}
+    elif name.strip():
+        needle = name.strip().lower()
+        chosen = next((row for row in channels if str(row.get("name") or "").lower() == needle), None)
+        if chosen is None:
+            raise RuntimeError(f"No channel named {name!r} on this radio.")
+    else:
+        raise RuntimeError("Pick a channel from the list.")
+    with _active_lock:
+        _channel_index = int(chosen["index"])
+        _channel_name = str(chosen.get("name") or _channel_name)
+    return {
+        "ok": True,
+        "channelIndex": _channel_index,
+        "channelName": _channel_name,
         "channels": channels,
     }
 
@@ -296,6 +345,16 @@ def handle(msg: dict[str, Any]) -> dict[str, Any]:
     if cmd == "send":
         send_text(str(msg.get("text") or ""))
         return {"ok": True}
+    if cmd == "set_channel":
+        index_raw = msg.get("index")
+        index = int(index_raw) if index_raw is not None and str(index_raw) != "" else None
+        return set_channel(index, str(msg.get("name") or ""))
+    if cmd == "list_channels":
+        with _active_lock:
+            iface = _interface
+        if iface is None:
+            raise RuntimeError("Radio is not connected.")
+        return {"ok": True, "channels": list_channels(iface), "channelIndex": _channel_index}
     if cmd == "disconnect":
         _close_interface()
         return {"ok": True, "connected": False}

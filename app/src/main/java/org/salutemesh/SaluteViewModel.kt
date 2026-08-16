@@ -221,7 +221,8 @@ class SaluteViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectChannel(index: Int) {
-        _ui.update { it.copy(channelIndex = index) }
+        val label = _ui.value.channels.firstOrNull { it.index == index }?.label ?: "Channel $index"
+        _ui.update { it.copy(channelIndex = index, statusMessage = "Mesh channel: $label") }
     }
 
     fun selectRadio(radio: BleRadio) {
@@ -264,15 +265,19 @@ class SaluteViewModel(app: Application) : AndroidViewModel(app) {
                 bindIncoming()
                 transport.connect()
                 val channels = transport.channels()
+                val previous = _ui.value.channelIndex
+                val keep = channels.firstOrNull { it.index == previous }
                 val salute = channels.firstOrNull { it.name.equals(SaluteCodec.DEFAULT_CHANNEL, true) }
+                val chosen = keep ?: salute ?: channels.firstOrNull()
                 _ui.update {
                     it.copy(
                         busy = false,
                         radioConnected = true,
                         radioLabel = transport.name,
                         channels = channels,
-                        channelIndex = salute?.index ?: it.channelIndex,
-                        statusMessage = "Connected. Channel ${salute?.label ?: it.channelIndex}",
+                        channelIndex = chosen?.index ?: it.channelIndex,
+                        statusMessage = "Connected. Pick a mesh channel, then send. " +
+                            "Using ${chosen?.label ?: "channel ${it.channelIndex}"}.",
                     )
                 }
             } catch (exc: Exception) {
@@ -293,6 +298,18 @@ class SaluteViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun bindIncoming() {
         transport.setIncomingHandler(::onIncoming)
+        transport.setChannelListHandler { list ->
+            if (list.isEmpty()) return@setChannelListHandler
+            _ui.update { state ->
+                val keep = list.firstOrNull { it.index == state.channelIndex }
+                val salute = list.firstOrNull { it.name.equals(SaluteCodec.DEFAULT_CHANNEL, true) }
+                val chosen = keep ?: salute ?: list.first()
+                state.copy(
+                    channels = list,
+                    channelIndex = chosen.index,
+                )
+            }
+        }
     }
 
     private fun rememberSent(id: String) {

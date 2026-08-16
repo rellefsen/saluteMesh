@@ -114,6 +114,12 @@ class RadioBridge(
         }
     }
 
+    suspend fun setChannel(index: Int, name: String = ""): JSONObject =
+        request(
+            JSONObject().put("cmd", "set_channel").put("index", index).put("name", name),
+            timeoutMs = 10_000,
+        )
+
     suspend fun disconnect() {
         try {
             request(JSONObject().put("cmd", "disconnect"), timeoutMs = 10_000)

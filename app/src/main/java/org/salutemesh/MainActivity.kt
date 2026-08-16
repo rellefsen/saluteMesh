@@ -21,8 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -36,9 +34,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -221,6 +216,7 @@ private fun ComposePane(
                 }
             }
         }
+        ChannelPicker(state.channels, state.channelIndex, onChannel)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = state.kind == ReportKind.SALUTE,
@@ -360,30 +356,31 @@ private fun RadioSetup(
                     label = { Text(radio.label) },
                 )
             }
-            ChannelMenu(state.channels, state.channelIndex, onChannel)
+            ChannelPicker(state.channels, state.channelIndex, onChannel)
         }
     }
 }
 
 @Composable
-private fun ChannelMenu(
+private fun ChannelPicker(
     channels: List<RadioChannel>,
     selected: Int,
     onSelect: (Int) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val label = channels.firstOrNull { it.index == selected }?.label ?: "Channel $selected"
-    TextButton(onClick = { expanded = true }) { Text("Channel: $label") }
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        channels.forEach { channel ->
-            DropdownMenuItem(
-                text = { Text(channel.label) },
-                onClick = {
-                    expanded = false
-                    onSelect(channel.index)
-                },
-            )
-        }
+    Text("Mesh channel", style = MaterialTheme.typography.titleSmall)
+    if (channels.isEmpty()) {
+        Text(
+            "Connect a radio to load its channels, then tap the one this net uses.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        return
+    }
+    channels.forEach { channel ->
+        FilterChip(
+            selected = channel.index == selected,
+            onClick = { onSelect(channel.index) },
+            label = { Text("${channel.index}  ${channel.label}") },
+        )
     }
 }
 
