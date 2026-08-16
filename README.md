@@ -8,8 +8,8 @@ There is no iPhone version yet. You install the Android app yourself (sideload).
 
 Sideload the field APK from **[GitHub Releases](https://github.com/rellefsen/saluteMesh/releases)**. Allow unknown sources. This is a debug build for field trials, not a Play Store app.
 
-- **Field radio:** `SaluteMesh-mesh-debug-0.1.2.apk` — Bluetooth to a Meshtastic radio. Includes the Meshtastic SDK (**GPL-3.0**).
-- **Practice (no radio):** `SaluteMesh-mock-debug-0.1.2.apk` — form and history only.
+- **Field radio:** `SaluteMesh-mesh-debug-0.1.3.apk` — Bluetooth to a Meshtastic radio. Includes the Meshtastic SDK (**GPL-3.0**).
+- **Practice (no radio):** `SaluteMesh-mock-debug-0.1.3.apk` — form and history only.
 
 Install over a previous 0.1.x build from this project (same debug signing key). The two APKs can sit on one phone (practice has a different app id).
 
@@ -67,7 +67,7 @@ Ask whoever builds the install files which phone file is which. Install the Fiel
 
 ### Compose (write and send)
 
-1. Open the app. Stay on **Compose**.
+1. Open the app. Stay on **Compose** (scan and connect are on **Radio**).
 2. Put in your **callsign**.
 3. Choose **SALUTE** (full) or **SALT** (short).
 4. Fill the boxes that are shown.
@@ -87,15 +87,27 @@ Open the **History** tab.
 
 History stays on **that phone** after you close the app. It is not a shared cloud inbox.
 
-**Fill form** copies an old report back onto Compose so you can change it and send again.
+**Fill form** copies an old report back onto Compose so you can change it and send again. It does **not** change your callsign.
+
+When a new report arrives, a banner appears at the top. Open **History** from there, or **Dismiss** it.
 
 **Clear history** wipes the log on this phone. It does not unsay anything already on the mesh.
 
-### Radios (Field version only)
+### Radio (phone and laptop)
+
+Open the **Radio** tab. On the phone this is next to Compose and History, same as the laptop command center.
+
+**Field (mesh) phone**
 
 1. Scan for radios and tap yours.
-2. Connect.
+2. Connect / Reconnect.
 3. Tap the **mesh channel** this net uses (often named **salute**). You can change it any time without reconnecting.
+
+Then go back to **Compose** to send. Incoming reports show a banner at the top and land in **History**.
+
+**Practice (mock) phone**
+
+Radio explains this build has no Bluetooth. Use **Fake incoming** on Compose to drill History.
 
 The radios must already share that channel and key. If people cannot hear each other, the radios are not on the same channel — not a problem the app can fix.
 
@@ -120,7 +132,7 @@ This is the full app on a laptop: Compose, History, and **Radio**.
 3. Open the **Radio** tab.
 4. Choose **USB serial** or **Bluetooth**.
 5. Find/scan, tap the radio. After **Connect**, tap the **mesh channel** this net uses (often **salute**).
-6. Go back to **Compose** and send. Incoming reports show up in **History**.
+6. Go back to **Compose** and send. Incoming reports show a banner at the top and land in **History**.
 
 History is saved on **that laptop** (`~/.saluteMesh/` on Linux, similar under your user folder on Windows). It is not a cloud inbox.
 

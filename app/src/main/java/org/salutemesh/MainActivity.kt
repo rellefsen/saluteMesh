@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -85,6 +86,7 @@ class MainActivity : ComponentActivity() {
                     onClearData = viewModel::clearData,
                     onClearHistory = viewModel::clearHistory,
                     onFillFromHistory = viewModel::fillFromHistory,
+                    onDismissBanner = viewModel::dismissIncomingBanner,
                     onTab = viewModel::selectTab,
                     onInject = viewModel::injectSample,
                     onScan = { withBle("scan") { viewModel.startScan() } },
@@ -121,6 +123,7 @@ fun SaluteScreen(
     onClearData: () -> Unit,
     onClearHistory: () -> Unit,
     onFillFromHistory: (SaluteReport) -> Unit,
+    onDismissBanner: () -> Unit,
     onTab: (Int) -> Unit,
     onInject: () -> Unit,
     onScan: () -> Unit,
@@ -133,6 +136,13 @@ fun SaluteScreen(
         topBar = {
             Column {
                 TopAppBar(title = { Text("SALUTE Mesh") })
+                if (state.incomingBanner.isNotBlank()) {
+                    IncomingBanner(
+                        message = state.incomingBanner,
+                        onDismiss = onDismissBanner,
+                        onOpenHistory = { onTab(1) },
+                    )
+                }
                 TabRow(selectedTabIndex = state.tab) {
                     Tab(
                         selected = state.tab == 0,
@@ -144,18 +154,33 @@ fun SaluteScreen(
                         onClick = { onTab(1) },
                         text = { Text("History (${state.reports.size})") },
                     )
+                    Tab(
+                        selected = state.tab == 2,
+                        onClick = { onTab(2) },
+                        text = { Text(radioTabLabel(state)) },
+                    )
                 }
             }
         },
     ) { padding ->
-        if (state.tab == 0) {
-            ComposePane(
+        when (state.tab) {
+            0 -> ComposePane(
                 state = state,
                 onField = onField,
                 onSend = onSend,
                 onStampNow = onStampNow,
                 onClearData = onClearData,
                 onInject = onInject,
+                modifier = Modifier.padding(padding),
+            )
+            1 -> HistoryPane(
+                reports = state.reports,
+                onClearHistory = onClearHistory,
+                onFillFromHistory = onFillFromHistory,
+                modifier = Modifier.padding(padding),
+            )
+            else -> RadioPane(
+                state = state,
                 onScan = onScan,
                 onStopScan = onStopScan,
                 onSelectRadio = onSelectRadio,
@@ -163,15 +188,38 @@ fun SaluteScreen(
                 onChannel = onChannel,
                 modifier = Modifier.padding(padding),
             )
-        } else {
-            HistoryPane(
-                reports = state.reports,
-                onClearHistory = onClearHistory,
-                onFillFromHistory = onFillFromHistory,
-                modifier = Modifier.padding(padding),
-            )
         }
     }
+}
+
+@Composable
+private fun IncomingBanner(
+    message: String,
+    onDismiss: () -> Unit,
+    onOpenHistory: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                message,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onOpenHistory) { Text("History") }
+            TextButton(onClick = onDismiss) { Text("Dismiss") }
+        }
+    }
+}
+
+private fun radioTabLabel(state: SaluteUiState): String {
+    return if (!state.mockRadio && state.radioConnected) "Radio · on" else "Radio"
 }
 
 @Composable
@@ -182,11 +230,6 @@ private fun ComposePane(
     onStampNow: () -> Unit,
     onClearData: () -> Unit,
     onInject: () -> Unit,
-    onScan: () -> Unit,
-    onStopScan: () -> Unit,
-    onSelectRadio: (org.salutemesh.mesh.BleRadio) -> Unit,
-    onConnect: () -> Unit,
-    onChannel: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -205,15 +248,9 @@ private fun ComposePane(
                 Text("Clear data")
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (state.mockRadio) {
-                OutlinedButton(onClick = onInject, modifier = Modifier.weight(1f)) {
-                    Text("Fake incoming")
-                }
-            } else {
-                OutlinedButton(onClick = onConnect, enabled = !state.busy, modifier = Modifier.weight(1f)) {
-                    Text(if (state.radioConnected) "Reconnect" else "Connect")
-                }
+        if (state.mockRadio) {
+            OutlinedButton(onClick = onInject, modifier = Modifier.fillMaxWidth()) {
+                Text("Fake incoming")
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -291,9 +328,6 @@ private fun ComposePane(
             )
         }
         Text(packetPreview(state), style = MaterialTheme.typography.bodySmall)
-        if (!state.mockRadio) {
-            RadioSetup(state, onScan, onStopScan, onSelectRadio, onChannel)
-        }
     }
 }
 
@@ -334,28 +368,67 @@ private fun HistoryPane(
 }
 
 @Composable
-private fun RadioSetup(
+private fun RadioPane(
     state: SaluteUiState,
     onScan: () -> Unit,
     onStopScan: () -> Unit,
     onSelectRadio: (org.salutemesh.mesh.BleRadio) -> Unit,
+    onConnect: () -> Unit,
     onChannel: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Radios already have the salute channel and PSK. This app only sends UTF-8 text.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onScan) { Text(if (state.scanning) "Scanning" else "Scan radios") }
-                if (state.scanning) TextButton(onClick = onStopScan) { Text("Stop") }
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(12.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(state.statusMessage, style = MaterialTheme.typography.bodySmall)
+        if (state.mockRadio) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Practice build", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "This APK has no Bluetooth radio. Scan, connect, and mesh channel live on the Field (mesh) APK.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        "Use Fake incoming on Compose to drill History without a radio.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
-            state.radios.forEach { radio ->
-                FilterChip(
-                    selected = state.bleAddress.equals(radio.address, ignoreCase = true),
-                    onClick = { onSelectRadio(radio) },
-                    label = { Text(radio.label) },
+            return@Column
+        }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (state.radioConnected) "Linked: ${state.radioLabel}" else "Not connected.",
+                    style = MaterialTheme.typography.titleSmall,
                 )
+                Text(
+                    "Radios already have the salute channel and PSK. This app only sends UTF-8 text.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onScan) {
+                        Text(if (state.scanning) "Scanning" else "Scan radios")
+                    }
+                    if (state.scanning) TextButton(onClick = onStopScan) { Text("Stop") }
+                }
+                state.radios.forEach { radio ->
+                    FilterChip(
+                        selected = state.bleAddress.equals(radio.address, ignoreCase = true),
+                        onClick = { onSelectRadio(radio) },
+                        label = { Text(radio.label) },
+                    )
+                }
+                Button(onClick = onConnect, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (state.radioConnected) "Reconnect" else "Connect")
+                }
+                ChannelPicker(state.channels, state.channelIndex, onChannel)
             }
-            ChannelPicker(state.channels, state.channelIndex, onChannel)
         }
     }
 }

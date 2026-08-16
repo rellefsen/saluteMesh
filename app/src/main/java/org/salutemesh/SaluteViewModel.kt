@@ -38,6 +38,7 @@ data class SaluteUiState(
     val scanning: Boolean = false,
     val busy: Boolean = false,
     val pendingBleAction: String = "",
+    val incomingBanner: String = "",
 )
 
 class SaluteViewModel(app: Application) : AndroidViewModel(app) {
@@ -81,7 +82,6 @@ class SaluteViewModel(app: Application) : AndroidViewModel(app) {
     fun fillFromHistory(report: SaluteReport) {
         _ui.update {
             it.copy(
-                callsign = report.callsign,
                 size = report.size,
                 activity = report.activity,
                 location = report.location,
@@ -90,9 +90,13 @@ class SaluteViewModel(app: Application) : AndroidViewModel(app) {
                 equipment = report.equipment,
                 kind = report.kind,
                 tab = 0,
-                statusMessage = "Loaded ${report.kind.name} from ${report.callsign}.",
+                statusMessage = "Loaded ${report.kind.name} fields from ${report.callsign}. Callsign unchanged.",
             )
         }
+    }
+
+    fun dismissIncomingBanner() {
+        _ui.update { it.copy(incomingBanner = "") }
     }
 
     fun stampNow() {
@@ -328,10 +332,12 @@ class SaluteViewModel(app: Application) : AndroidViewModel(app) {
         if (sentIds.contains(decoded.id.trim().uppercase())) return
         if (_ui.value.reports.any { it.id.equals(decoded.id, ignoreCase = true) }) return
         val reports = history.append(decoded)
+        val banner = "New ${decoded.kind.name} from ${decoded.callsign}"
         _ui.update {
             it.copy(
                 reports = reports,
-                statusMessage = "Received ${decoded.kind.name} from ${decoded.callsign}",
+                statusMessage = banner,
+                incomingBanner = banner,
             )
         }
     }
