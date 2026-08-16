@@ -1,0 +1,14 @@
+/.gradle/
+/build/
+*/build/
+/.idea/
+*.iml
+local.properties
+.DS_Store
+*.apk
+*.ap_
+*.dex
+/app/release/
+/desktop/build/
+python/.venv/
+python/**/__pycache__/
