@@ -258,21 +258,6 @@ fun CommandCenterApp() {
                 },
                 onFake = ::fakeIncoming,
                 onNow = { timeText = SaluteTime.nowLocal() },
-                channels = channels,
-                channelIndex = channelIndex,
-                onPickChannel = { channel ->
-                    channelIndex = channel.index
-                    settings = settings.copy(channelName = channel.name.ifBlank { settings.channelName })
-                    DesktopSettings.save(settings.copy(callsign = callsign))
-                    scope.launch {
-                        try {
-                            withContext(Dispatchers.IO) { bridge.setChannel(channel.index, channel.name) }
-                            status = "Mesh channel: ${channel.label} (index ${channel.index})"
-                        } catch (exc: Exception) {
-                            status = "Could not select channel: ${exc.message}"
-                        }
-                    }
-                },
             )
             1 -> HistoryPane(
                 status = status,
@@ -396,9 +381,6 @@ private fun ComposePane(
     onClear: () -> Unit,
     onFake: () -> Unit,
     onNow: () -> Unit,
-    channels: List<MeshChannel>,
-    channelIndex: Int,
-    onPickChannel: (MeshChannel) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
@@ -413,18 +395,6 @@ private fun ComposePane(
             Button(onClick = onSend, enabled = !busy) { Text("Send ${kind.name}") }
             OutlinedButton(onClick = onClear, enabled = !busy) { Text("Clear data") }
             OutlinedButton(onClick = onFake, enabled = !busy) { Text("Fake incoming") }
-        }
-        if (channels.isNotEmpty()) {
-            Text("Mesh channel — tap the one this net uses.")
-            channels.forEach { channel ->
-                if (channel.index == channelIndex) {
-                    Button(onClick = { onPickChannel(channel) }) { Text("${channel.index}  ${channel.label}") }
-                } else {
-                    OutlinedButton(onClick = { onPickChannel(channel) }) { Text("${channel.index}  ${channel.label}") }
-                }
-            }
-        } else {
-            Text("Connect a radio on the Radio tab, then tap a mesh channel here.")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (kind == ReportKind.SALUTE) {

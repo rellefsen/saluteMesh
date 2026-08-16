@@ -8,8 +8,8 @@ There is no iPhone version yet. You install the Android app yourself (sideload).
 
 Sideload the field APK from **[GitHub Releases](https://github.com/rellefsen/saluteMesh/releases)**. Allow unknown sources. This is a debug build for field trials, not a Play Store app.
 
-- **Field radio:** `SaluteMesh-mesh-debug-0.1.1.apk` — Bluetooth to a Meshtastic radio. Includes the Meshtastic SDK (**GPL-3.0**).
-- **Practice (no radio):** `SaluteMesh-mock-debug-0.1.1.apk` — form and history only.
+- **Field radio:** `SaluteMesh-mesh-debug-0.1.2.apk` — Bluetooth to a Meshtastic radio. Includes the Meshtastic SDK (**GPL-3.0**).
+- **Practice (no radio):** `SaluteMesh-mock-debug-0.1.2.apk` — form and history only.
 
 Install over a previous 0.1.x build from this project (same debug signing key). The two APKs can sit on one phone (practice has a different app id).
 

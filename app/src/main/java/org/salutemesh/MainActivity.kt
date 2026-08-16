@@ -216,7 +216,6 @@ private fun ComposePane(
                 }
             }
         }
-        ChannelPicker(state.channels, state.channelIndex, onChannel)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = state.kind == ReportKind.SALUTE,
